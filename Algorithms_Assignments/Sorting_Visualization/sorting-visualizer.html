@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sorting Visualizer</title>
+<style>
+body{font-family:system-ui,Arial;margin:30px auto;max-width:1000px;padding:0 18px;color:#172033}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}button,select{padding:10px 14px;border:1px solid #b8c2d2;border-radius:7px;background:white}
+#chart{height:320px;display:flex;align-items:end;gap:3px;padding:10px 4px;border-bottom:2px solid #8290a5}
+.bar{flex:1;background:#6389c6;border-radius:3px 3px 0 0;min-width:2px}.bar.compare{background:#e6a34d}.bar.pivot{background:#55a58b}
+small{color:#586579}
+</style></head><body>
+<h1>Sorting Visualizer</h1><p>Compare Merge Sort and Quick Sort with an animated array.</p>
+<div class="controls"><select id="algorithm"><option value="merge">Merge Sort</option><option value="quick">Quick Sort</option></select>
+<button id="shuffle">New random array</button><button id="run">Start sorting</button><button id="pause">Pause</button></div>
+<p id="metrics">Comparisons: 0 · Array length: 35</p><div id="chart"></div><small>Orange: values currently compared · Green: pivot / active value</small>
+<script>
+const chart=document.querySelector("#chart"),metrics=document.querySelector("#metrics");
+let values=[],comparisons=0,frames=[],timer=null;
+function randomize(){stop();values=Array.from({length:35},()=>5+Math.floor(Math.random()*95));comparisons=0;frames=[];draw();}
+function save(a,b=-1,p=-1){frames.push({values:[...values],a,b,p,comparisons});}
+function draw(frame=null){
+ const f=frame||{values,a:-1,b:-1,p:-1,comparisons};
+ chart.replaceChildren(...f.values.map((v,i)=>{const bar=document.createElement("div");bar.className="bar"+(i===f.p?" pivot":i===f.a||i===f.b?" compare":"");bar.style.height=v+"%";return bar;}));
+ metrics.textContent=`Comparisons: ${f.comparisons} · Array length: ${f.values.length}`;
+}
+function mergeSort(arr,offset=0){
+ if(arr.length<2)return arr;
+ const mid=arr.length>>1,left=mergeSort(arr.slice(0,mid),offset),right=mergeSort(arr.slice(mid),offset+mid);
+ let out=[],i=0,j=0;
+ while(i<left.length&&j<right.length){comparisons++;save(offset+i,offset+mid+j);out.push(left[i]<=right[j]?left[i++]:right[j++]);}
+ return out.concat(left.slice(i),right.slice(j));
+}
+function quickSort(arr,offset=0){
+ if(arr.length<2)return arr;
+ const pivot=arr[arr.length-1],left=[],right=[],equal=[];
+ for(let i=0;i<arr.length;i++){comparisons++;save(offset+i,-1,offset+arr.length-1);if(arr[i]<pivot)left.push(arr[i]);else if(arr[i]>pivot)right.push(arr[i]);else equal.push(arr[i]);}
+ return quickSort(left,offset)+quickSort(equal,offset+left.length)+quickSort(right,offset+left.length+equal.length);
+}
+function stop(){if(timer){clearInterval(timer);timer=null;}}
+function run(){
+ stop();frames=[];comparisons=0;
+ const sorted=document.querySelector("#algorithm").value==="merge"?mergeSort(values):quickSort(values);
+ values=sorted;save();let index=0;
+ if(!frames.length){draw();return;}
+ timer=setInterval(()=>{if(index>=frames.length){stop();draw();return;}draw(frames[index++]);},70);
+}
+document.querySelector("#shuffle").onclick=randomize;
+document.querySelector("#run").onclick=run;
+document.querySelector("#pause").onclick=stop;
+randomize();
+</script></body></html>

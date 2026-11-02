@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Heap Sort Visualizer</title>
+<style>
+body{font-family:Arial,sans-serif;max-width:950px;margin:35px auto;padding:0 18px;color:#172033}
+input{padding:10px;width:min(520px,90%)}button{padding:10px 15px;margin:8px 5px 8px 0;cursor:pointer}
+#bars{height:260px;display:flex;align-items:end;gap:5px;border-bottom:2px solid #667085;padding:12px 4px}
+.bar{flex:1;min-width:8px;background:#6487c7;border-radius:4px 4px 0 0;position:relative}
+.bar.active{background:#e49b43}.bar.done{background:#58a58a}
+#labels{display:flex;gap:5px;flex-wrap:wrap;margin-top:15px}.tag{padding:6px 9px;background:#eef2f8;border-radius:5px}
+</style></head>
+<body>
+<h1>Heap Sort Visualizer</h1>
+<p>Enter comma-separated numbers to create a step-by-step heap sort animation.</p>
+<input id="values" value="8,3,12,5,1,9,6">
+<button id="build">Build animation</button><button id="next">Next step</button><button id="play">Play</button>
+<p id="status">Enter values and build the animation.</p><div id="bars"></div><div id="labels"></div>
+<script>
+const input=document.querySelector("#values"), bars=document.querySelector("#bars");
+const status=document.querySelector("#status"), labels=document.querySelector("#labels");
+let frames=[], cursor=0, timer=null;
+function record(active=-1, sortedFrom=Infinity, note=""){
+ frames.push({data:[...array],active,sortedFrom,note});
+}
+let array=[];
+function siftDown(root,end){
+ let parent=root;
+ while(true){
+  let child=parent*2+1;
+  if(child>=end) return;
+  if(child+1<end && array[child+1]>array[child]) child++;
+  if(array[parent]>=array[child]) return;
+  [array[parent],array[child]]=[array[child],array[parent]];
+  parent=child; record(parent,end,"Restoring the heap property");
+ }
+}
+function build(){
+ stop();
+ const parsed=input.value.split(",").map(x=>Number(x.trim()));
+ if(parsed.length<2 || parsed.some(x=>!Number.isFinite(x))){alert("Enter at least two valid numbers.");return;}
+ array=parsed; frames=[]; record(-1,array.length,"Initial array");
+ for(let i=Math.floor(array.length/2)-1;i>=0;i--) siftDown(i,array.length);
+ record(-1,array.length,"Max heap created");
+ for(let end=array.length-1;end>0;end--){
+  [array[0],array[end]]=[array[end],array[0]];
+  record(0,end,"Move maximum value to its final position");
+  siftDown(0,end);
+ }
+ record(-1,0,"Sorting complete");cursor=0;render();
+}
+function render(){
+ if(!frames.length)return;
+ const f=frames[cursor], max=Math.max(...f.data.map(Math.abs),1);
+ bars.replaceChildren(...f.data.map((v,i)=>{
+  const el=document.createElement("div");el.className="bar"+(i===f.active?" active":i>=f.sortedFrom?" done":"");
+  el.style.height=(Math.max(3,Math.abs(v)/max*220))+"px";el.title=String(v);return el;
+ }));
+ labels.textContent="";
+ f.data.forEach((v,i)=>{const tag=document.createElement("span");tag.className="tag";tag.textContent=`${i}: ${v}`;labels.append(tag);});
+ status.textContent=`Step ${cursor+1} / ${frames.length} — ${f.note}`;
+}
+function next(){if(cursor<frames.length-1){cursor++;render();}else stop();}
+function stop(){if(timer){clearInterval(timer);timer=null;}document.querySelector("#play").textContent="Play";}
+document.querySelector("#build").addEventListener("click",build);
+document.querySelector("#next").addEventListener("click",next);
+document.querySelector("#play").addEventListener("click",()=>{
+ if(!frames.length)build();if(timer){stop();return;}
+ document.querySelector("#play").textContent="Pause";
+ timer=setInterval(()=>{if(cursor>=frames.length-1){stop();return;}next();},500);
+});
+</script></body></html>
